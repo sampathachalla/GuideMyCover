@@ -14,7 +14,8 @@
       "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.sampath2001.guidemycover"
     },
     "web": {
       "bundler": "metro",
@@ -25,6 +26,7 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/logo.png",
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }

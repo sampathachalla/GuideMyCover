@@ -1,7 +1,7 @@
 import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Platform, View, StyleSheet } from 'react-native';
+import { LogBox, Platform, View, StyleSheet } from 'react-native';
 // Update the import path if ThemeContext is actually in 'guidemycover/context/ThemeContext'
 import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
 import { Colors } from '../constants/Colors';
@@ -11,6 +11,10 @@ import AppHeader from '../components/AppHeader';
 if (typeof window !== 'undefined') {
   require('../global.css');
 }
+
+LogBox.ignoreLogs([
+  'SafeAreaView has been deprecated and will be removed in a future release.',
+]);
 
 // 🔄 Custom inner layout wrapper to apply dynamic dark mode class
 function ThemedLayoutWrapper() {

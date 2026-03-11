@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
@@ -9,8 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../constants/Colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -24,17 +23,20 @@ const onboardingScreens: OnboardingScreen[] = [
   {
     image: require('../../assets/logo.png'),
     headline: 'Stop Guessing. Start Saving.',
-    bodyText: 'Welcome to GuideMyCover. Finding the right insurance can be complex and overwhelming. We make it simple.',
+    bodyText:
+      'Welcome to GuideMyCover. Finding the right insurance can be complex and overwhelming. We make it simple.',
   },
   {
     image: require('../../assets/logo.png'),
     headline: 'Your Personal Insurance Navigator',
-    bodyText: 'Answer a few simple questions, and our smart technology scans, compares, and recommends the best policies for your unique needs.',
+    bodyText:
+      'Answer a few simple questions, and our smart technology scans, compares, and recommends the best policies for your unique needs.',
   },
   {
     image: require('../../assets/logo.png'),
     headline: 'Choose with Total Confidence.',
-    bodyText: 'Get clear, unbiased comparisons in minutes. No jargon, no hidden fees—just the perfect coverage at the best price.',
+    bodyText:
+      'Get clear, unbiased comparisons in minutes. No jargon, no hidden fees, just the perfect coverage at the best price.',
   },
 ];
 
@@ -42,12 +44,11 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const insets = useSafeAreaInsets();
 
   const handleScroll = useCallback((event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(offsetX / SCREEN_WIDTH);
-    // Only update if index actually changed to prevent infinite loops
+
     setCurrentIndex((prevIndex) => {
       if (prevIndex !== index && index >= 0 && index < onboardingScreens.length) {
         return index;
@@ -64,47 +65,50 @@ export default function WelcomeScreen() {
         x: nextIndex * SCREEN_WIDTH,
         animated: true,
       });
+      return;
     }
-  }, [currentIndex]);
+
+    router.replace('/(tabs)/home');
+  }, [currentIndex, router]);
 
   const handleSkip = () => {
-    // Navigate to main app - adjust route as needed
     router.replace('/(tabs)/home');
   };
 
-  const handleGetStarted = () => {
-    // Navigate to signup or main app - adjust route as needed
-    router.replace('/(tabs)/home');
-  };
+  const renderBackground = () => (
+    <View pointerEvents="none" style={styles.backgroundLayer}>
+      <View style={[styles.orb, styles.orbPurple]} />
+      <View style={[styles.orb, styles.orbEmerald]} />
+      <View style={[styles.orb, styles.orbPink]} />
+      <View style={styles.gridOverlay} />
+    </View>
+  );
 
+  const renderScreen = (screen: OnboardingScreen, index: number) => (
+    <View key={index} style={styles.screen}>
+      <View style={styles.contentWrapper}>
+        <View style={styles.imageGlow} />
+        <View style={styles.imageCard}>
+          <Image source={screen.image} style={styles.image} resizeMode="contain" />
+        </View>
 
-  const renderScreen = (screen: OnboardingScreen, index: number) => {
-    return (
-      <View key={index} style={styles.screen}>
-        <View style={styles.contentWrapper}>
-          <View style={styles.imageContainer}>
-            <Image source={screen.image} style={styles.image} resizeMode="contain" />
-          </View>
-          <View style={styles.textContainer}>
-            <Text style={styles.headline}>{screen.headline}</Text>
-            <Text style={styles.bodyText}>{screen.bodyText}</Text>
-          </View>
+        <View style={styles.textBlock}>
+          <Text style={styles.kicker}>GuideMyCover</Text>
+          <Text style={styles.headline}>{screen.headline}</Text>
+          <Text style={styles.bodyText}>{screen.bodyText}</Text>
         </View>
       </View>
-    );
-  };
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      {/* Skip Button */}
-      <TouchableOpacity 
-        style={[styles.skipButton, { top: insets.top + 8 }]} 
-        onPress={handleSkip}
-      >
+      {renderBackground()}
+
+      <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.85}>
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
 
-      {/* Carousel */}
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -112,44 +116,31 @@ export default function WelcomeScreen() {
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScroll}
         style={styles.scrollView}
-        scrollEnabled={true}
         bounces={false}
       >
         {onboardingScreens.map((screen, index) => renderScreen(screen, index))}
       </ScrollView>
 
-      {/* Page Indicators */}
       <View style={styles.indicatorsContainer}>
         {onboardingScreens.map((_, index) => (
           <View
             key={index}
-            style={[
-              styles.indicator,
-              currentIndex === index && styles.indicatorActive,
-            ]}
+            style={[styles.indicator, currentIndex === index && styles.indicatorActive]}
           />
         ))}
       </View>
 
-      {/* Action Buttons */}
       <View style={styles.buttonContainer} pointerEvents="box-none">
-        {currentIndex < onboardingScreens.length - 1 ? (
-          <TouchableOpacity 
-            style={styles.nextButton} 
-            onPress={handleNext}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.nextButtonText}>Next</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity 
-            style={styles.getStartedButton} 
-            onPress={handleGetStarted}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.getStartedButtonText}>Get Started</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={styles.primaryButton} onPress={handleNext} activeOpacity={0.9}>
+          <Text style={styles.primaryButtonText}>
+            {currentIndex < onboardingScreens.length - 1 ? 'Next' : 'Get Started'}
+          </Text>
+          <Ionicons
+            name={currentIndex < onboardingScreens.length - 1 ? 'arrow-forward' : 'sparkles'}
+            size={18}
+            color="#FFFFFF"
+          />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -158,20 +149,57 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.mainBackground,
+    backgroundColor: '#050816',
+  },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#050816',
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.18,
+    backgroundColor: 'transparent',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  orb: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 999,
+    opacity: 0.28,
+  },
+  orbPurple: {
+    top: 72,
+    left: -30,
+    backgroundColor: '#7C3AED',
+  },
+  orbEmerald: {
+    top: 180,
+    right: -40,
+    backgroundColor: '#10B981',
+  },
+  orbPink: {
+    bottom: 24,
+    left: 32,
+    backgroundColor: '#EC4899',
   },
   skipButton: {
     position: 'absolute',
-    left: 20,
+    top: 10,
+    right: 16,
     zIndex: 1000,
-    padding: 10,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   skipText: {
-    fontSize: 16,
-    color: Colors.barBackground,
-    fontWeight: '500',
+    fontSize: 14,
+    color: '#E2E8F0',
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
@@ -180,105 +208,112 @@ const styles = StyleSheet.create({
   screen: {
     width: SCREEN_WIDTH,
     flex: 1,
-    paddingHorizontal: 32,
-    paddingTop: 80,
-    paddingBottom: 20,
+    paddingHorizontal: 28,
+    paddingTop: 76,
+    paddingBottom: 12,
   },
   contentWrapper: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  imageContainer: {
-    width: '100%',
+  imageGlow: {
+    position: 'absolute',
+    top: '18%',
+    width: 180,
+    height: 180,
+    borderRadius: 999,
+    backgroundColor: 'rgba(20, 184, 166, 0.22)',
+  },
+  imageCard: {
+    width: 240,
+    height: 240,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
-    flexShrink: 1,
+    marginBottom: 34,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    shadowColor: '#000000',
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
   },
   image: {
-    width: 280,
-    height: 280,
-    maxWidth: '85%',
+    width: 170,
+    height: 170,
   },
-  textContainer: {
+  textBlock: {
     width: '100%',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    flexShrink: 1,
+    paddingHorizontal: 10,
+  },
+  kicker: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: '#6EE7B7',
+    marginBottom: 14,
   },
   headline: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.textColor,
+    fontSize: 34,
+    fontWeight: '900',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 16,
-    lineHeight: 32,
-    paddingHorizontal: 10,
+    lineHeight: 40,
   },
   bodyText: {
-    fontSize: 15,
-    color: Colors.textColor,
+    fontSize: 16,
+    color: '#CBD5E1',
     textAlign: 'center',
-    lineHeight: 22,
-    opacity: 0.8,
-    paddingHorizontal: 10,
+    lineHeight: 26,
+    maxWidth: 320,
   },
   indicatorsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 18,
     gap: 8,
     zIndex: 10,
-    backgroundColor: Colors.mainBackground,
   },
   indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.barBackground,
-    opacity: 0.3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   indicatorActive: {
-    opacity: 1,
-    width: 24,
-    backgroundColor: Colors.barBackground,
+    width: 28,
+    backgroundColor: '#6EE7B7',
   },
   buttonContainer: {
-    paddingHorizontal: 32,
-    paddingBottom: 30,
-    paddingTop: 10,
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+    paddingTop: 6,
     zIndex: 100,
-    backgroundColor: Colors.mainBackground,
   },
-  nextButton: {
-    backgroundColor: Colors.barBackground,
-    paddingVertical: 16,
-    paddingHorizontal: 48,
-    borderRadius: 12,
+  primaryButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#0D9488',
+    paddingVertical: 17,
+    borderRadius: 18,
+    shadowColor: '#10B981',
+    shadowOpacity: 0.32,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
   },
-  nextButtonText: {
-    color: '#FFFFFF',
+  primaryButtonText: {
     fontSize: 18,
-    fontWeight: '600',
-  },
-  getStartedButton: {
-    backgroundColor: Colors.barBackground,
-    paddingVertical: 16,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  getStartedButtonText: {
+    fontWeight: '800',
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
   },
 });
-

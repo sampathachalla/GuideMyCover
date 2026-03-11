@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
   Linking,
   Platform,
   ScrollView,
@@ -11,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Colors } from '../../constants/Colors';
 
 interface FormData {
   firstName: string;
@@ -26,70 +26,69 @@ interface FormData {
 }
 
 type ViewType = 'menu' | 'contact' | 'life';
+type SelectionType = 'health' | 'medicare' | 'life' | 'contact' | 'more';
+type ContactMethod = 'text' | 'email' | 'call';
+type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error';
+
+const initialFormData: FormData = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  dateOfBirth: '',
+  gender: '',
+  zipCode: '',
+  desiredPremium: '',
+  smokingStatus: '',
+};
+
+const externalLinks: Record<Exclude<SelectionType, 'life' | 'contact'>, string> = {
+  health: 'https://www.healthsherpa.com/?_agent_id=thomas-basey-ACA',
+  medicare: 'https://www.planenroll.com/medicare/products?purl=dZZl56fi',
+  more: 'https://brokers.insuranceforeveryone.com/?Portal=18875011',
+};
 
 export default function HomeScreen() {
   const [view, setView] = useState<ViewType>('menu');
-  const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    dateOfBirth: '',
-    gender: '',
-    zipCode: '',
-    desiredPremium: '',
-    smokingStatus: '',
-  });
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSelection = (type: string) => {
-    if (type === 'health') {
-      const url = 'https://www.healthsherpa.com/?_agent_id=thomas-basey-ACA';
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined') {
-          window.open(url, '_blank');
-        }
-      } else {
-        Linking.openURL(url);
-      }
-    } else if (type === 'medicare') {
-      const url = 'https://www.planenroll.com/medicare/products?purl=dZZl56fi';
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined') {
-          window.open(url, '_blank');
-        }
-      } else {
-        Linking.openURL(url);
-      }
-    } else if (type === 'life') {
-      setView('life');
-    } else if (type === 'contact') {
-      setView('contact');
-    } else if (type === 'more') {
-      const url = 'https://brokers.insuranceforeveryone.com/?Portal=18875011';
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined') {
-          window.open(url, '_blank');
-        }
-      } else {
-        Linking.openURL(url);
-      }
+  const openUrl = async (url: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Unable to open link', 'Please try again in a moment.');
     }
   };
 
-  const handleContact = (method: string) => {
-    if (method === 'text') {
-      Linking.openURL('sms:9728919567');
-    } else if (method === 'email') {
-      Linking.openURL('mailto:contact@basey-insurance.com');
-    } else if (method === 'call') {
-      Linking.openURL('tel:8176318312');
+  const handleSelection = (type: SelectionType) => {
+    if (type === 'life' || type === 'contact') {
+      setView(type);
+      setErrorMessage('');
+      setSubmitStatus('idle');
+      return;
     }
+
+    void openUrl(externalLinks[type]);
+  };
+
+  const handleContact = (method: ContactMethod) => {
+    if (method === 'text') {
+      void openUrl('sms:9728919567');
+      return;
+    }
+
+    if (method === 'email') {
+      void openUrl('mailto:contact@basey-insurance.com');
+      return;
+    }
+
+    void openUrl('tel:8176318312');
   };
 
   const handleInputChange = (name: keyof FormData, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -99,7 +98,14 @@ export default function HomeScreen() {
     setErrorMessage('');
     setSubmitStatus('idle');
 
-    if (!formData.firstName || !formData.lastName || !formData.dateOfBirth || !formData.gender || !formData.zipCode || !formData.smokingStatus) {
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.dateOfBirth ||
+      !formData.gender ||
+      !formData.zipCode ||
+      !formData.smokingStatus
+    ) {
       setErrorMessage('Please fill out all required fields.');
       return;
     }
@@ -116,8 +122,9 @@ export default function HomeScreen() {
 
     setSubmitStatus('submitting');
 
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbzKZzc0RpGJOsZ_tjjmn1QNcSYVpPiTLzhLTdrFEGh8WAulDjLKs2TCwizwKD61fvQbvQ/exec';
-    
+    const scriptURL =
+      'https://script.google.com/macros/s/AKfycbzKZzc0RpGJOsZ_tjjmn1QNcSYVpPiTLzhLTdrFEGh8WAulDjLKs2TCwizwKD61fvQbvQ/exec';
+
     const params = new URLSearchParams({
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -133,30 +140,18 @@ export default function HomeScreen() {
     try {
       await fetch(`${scriptURL}?${params.toString()}`, {
         method: 'GET',
-        mode: 'no-cors',
       });
 
+      setSubmitStatus('success');
+      setFormData(initialFormData);
+
       setTimeout(() => {
-        setSubmitStatus('success');
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          dateOfBirth: '',
-          gender: '',
-          zipCode: '',
-          desiredPremium: '',
-          smokingStatus: '',
-        });
-        setTimeout(() => {
-          setView('menu');
-          setSubmitStatus('idle');
-        }, 2000);
-      }, 500);
-    } catch (error) {
+        setView('menu');
+        setSubmitStatus('idle');
+      }, 2000);
+    } catch {
       setSubmitStatus('error');
-      Alert.alert('Error', 'There was an error submitting your information. Please try again.');
+      setErrorMessage('There was an error submitting your information. Please try again.');
     }
   };
 
@@ -166,674 +161,681 @@ export default function HomeScreen() {
     setErrorMessage('');
   };
 
-  if (view === 'contact') {
+  const renderBackground = () => (
+    <View pointerEvents="none" style={styles.backgroundLayer}>
+      <View style={[styles.orb, styles.orbPurple]} />
+      <View style={[styles.orb, styles.orbEmerald]} />
+      <View style={[styles.orb, styles.orbPink]} />
+      <View style={styles.gridOverlay} />
+    </View>
+  );
+
+  const renderBackButton = () => (
+    <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.8}>
+      <Ionicons name="arrow-back" size={18} color="#6EE7B7" />
+      <Text style={styles.backText}>Back</Text>
+    </TouchableOpacity>
+  );
+
+  const renderMenuCard = (
+    title: string,
+    subtitle: string,
+    icon: keyof typeof Ionicons.glyphMap,
+    iconBackground: string,
+    iconColor: string,
+    sparkleColor: string,
+    onPress: () => void
+  ) => (
+    <TouchableOpacity style={styles.glassCard} onPress={onPress} activeOpacity={0.88}>
+      <View style={styles.cardRow}>
+        <View style={[styles.cardIconWrap, { backgroundColor: iconBackground }]}>
+          <Ionicons name={icon} size={28} color={iconColor} />
+        </View>
+        <View style={styles.cardTextBlock}>
+          <Text style={styles.cardTitle}>{title}</Text>
+          <Text style={styles.cardSubtitle}>{subtitle}</Text>
+        </View>
+        <Ionicons name="sparkles" size={18} color={sparkleColor} />
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderRadioOption = (
+    label: string,
+    value: string,
+    field: keyof Pick<FormData, 'gender' | 'smokingStatus'>
+  ) => {
+    const isSelected = formData[field] === value;
+
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={20} color={Colors.barBackground} />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
+      <TouchableOpacity
+        key={value}
+        style={[styles.radioPill, isSelected && styles.radioPillSelected]}
+        activeOpacity={0.85}
+        onPress={() => handleInputChange(field, value)}
+      >
+        <View style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}>
+          {isSelected ? <View style={styles.radioInner} /> : null}
         </View>
-
-        <View style={styles.contactContainer}>
-          <View style={styles.contactHeader}>
-            <View style={styles.contactIconCircle}>
-              <Ionicons name="call" size={32} color="#FFFFFF" />
-            </View>
-            <Text style={styles.contactTitle}>Contact a Broker</Text>
-            <Text style={styles.contactSubtitle}>Choose how you'd like to reach out</Text>
-          </View>
-
-          <View style={styles.contactCards}>
-            <TouchableOpacity
-              style={styles.contactCard}
-              onPress={() => handleContact('text')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.cardContent}>
-                <View style={[styles.cardIcon, { backgroundColor: '#DBEAFE' }]}>
-                  <Ionicons name="chatbubble" size={28} color="#2563EB" />
-                </View>
-                <View style={styles.cardText}>
-                  <Text style={styles.cardTitle}>Send a Text</Text>
-                  <Text style={styles.cardSubtitle}>(972) 891-9567</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.contactCard}
-              onPress={() => handleContact('email')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.cardContent}>
-                <View style={[styles.cardIcon, { backgroundColor: '#F3E8FF' }]}>
-                  <Ionicons name="mail" size={28} color="#9333EA" />
-                </View>
-                <View style={styles.cardText}>
-                  <Text style={styles.cardTitle}>Send an Email</Text>
-                  <Text style={styles.cardSubtitle}>contact@basey-insurance.com</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.contactCard}
-              onPress={() => handleContact('call')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.cardContent}>
-                <View style={[styles.cardIcon, { backgroundColor: '#D1FAE5' }]}>
-                  <Ionicons name="call" size={28} color="#059669" />
-                </View>
-                <View style={styles.cardText}>
-                  <Text style={styles.cardTitle}>Call Now</Text>
-                  <Text style={styles.cardSubtitle}>(817) 631-8312</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
+        <Text style={styles.radioText}>{label}</Text>
+      </TouchableOpacity>
     );
-  }
+  };
 
-  if (view === 'life') {
-    return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={20} color={Colors.barBackground} />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
+  const renderTextField = (
+    label: string,
+    name: keyof FormData,
+    options?: {
+      placeholder?: string;
+      keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'number-pad';
+      autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+      maxLength?: number;
+      helperText?: string;
+    }
+  ) => (
+    <View style={styles.fieldBlock}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        style={styles.input}
+        value={formData[name]}
+        onChangeText={(value) => handleInputChange(name, value)}
+        placeholder={options?.placeholder}
+        placeholderTextColor="#94A3B8"
+        keyboardType={options?.keyboardType ?? 'default'}
+        autoCapitalize={options?.autoCapitalize ?? 'words'}
+        maxLength={options?.maxLength}
+      />
+      {options?.helperText ? <Text style={styles.helperText}>{options.helperText}</Text> : null}
+    </View>
+  );
+
+  const renderContactView = () => (
+    <View style={styles.pageWrap}>
+      {renderBackButton()}
+      <View style={styles.centeredHeader}>
+        <View style={styles.heroHalo} />
+        <View style={[styles.heroIconShell, styles.heroIconContact]}>
+          <Ionicons name="umbrella" size={44} color="#FFFFFF" />
+        </View>
+        <Text style={styles.sectionTitle}>Contact a Broker</Text>
+        <Text style={styles.sectionSubtitle}>Choose your preferred contact method</Text>
+      </View>
+
+      <View style={styles.stack}>
+        {renderMenuCard(
+          'Send a Text',
+          '(972) 891-9567',
+          'chatbubble-ellipses',
+          'rgba(37, 99, 235, 0.24)',
+          '#60A5FA',
+          '#60A5FA',
+          () => handleContact('text')
+        )}
+        {renderMenuCard(
+          'Send an Email',
+          'contact@basey-insurance.com',
+          'mail',
+          'rgba(147, 51, 234, 0.24)',
+          '#C084FC',
+          '#C084FC',
+          () => handleContact('email')
+        )}
+        {renderMenuCard(
+          'Call Now',
+          '(817) 631-8312',
+          'call',
+          'rgba(16, 185, 129, 0.24)',
+          '#34D399',
+          '#34D399',
+          () => handleContact('call')
+        )}
+      </View>
+    </View>
+  );
+
+  const renderLifeView = () => (
+    <View style={styles.pageWrap}>
+      {renderBackButton()}
+      <View style={styles.formShell}>
+        <View style={styles.formHeader}>
+          <View style={styles.heroHaloSmall} />
+          <View style={[styles.heroIconShell, styles.heroIconShield]}>
+            <Ionicons name="shield-checkmark" size={32} color="#FFFFFF" />
+          </View>
+          <Text style={styles.formTitle}>Life Insurance Quote</Text>
+          <Text style={styles.formSubtitle}>Fill out your information to get started</Text>
+          <Text style={styles.requiredText}>* Required fields</Text>
         </View>
 
-        <View style={styles.formContainer}>
-          <View style={styles.formHeader}>
-            <View style={[styles.formIconCircle, { backgroundColor: '#D1FAE5' }]}>
-              <Ionicons name="shield" size={32} color="#059669" />
-            </View>
-            <Text style={styles.formTitle}>Life Insurance Quote</Text>
-            <Text style={styles.formSubtitle}>Fill out your information to get started</Text>
-            <Text style={styles.requiredNote}>* Required fields</Text>
+        <View style={styles.formFields}>
+          <View style={styles.formRow}>
+            <View style={styles.halfField}>{renderTextField('First Name *', 'firstName')}</View>
+            <View style={styles.halfField}>{renderTextField('Last Name *', 'lastName')}</View>
           </View>
 
-          <View style={styles.formFields}>
-            <View style={styles.row}>
-              <View style={styles.halfWidth}>
-                <Text style={styles.label}>First Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.firstName}
-                  onChangeText={(value) => handleInputChange('firstName', value)}
-                  placeholder="First Name"
-                />
-              </View>
-              <View style={styles.halfWidth}>
-                <Text style={styles.label}>Last Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.lastName}
-                  onChangeText={(value) => handleInputChange('lastName', value)}
-                  placeholder="Last Name"
-                />
-              </View>
+          {renderTextField('Email Address', 'email', {
+            placeholder: 'your.email@example.com',
+            keyboardType: 'email-address',
+            autoCapitalize: 'none',
+          })}
+
+          {renderTextField('Phone Number', 'phone', {
+            placeholder: '(555) 123-4567',
+            keyboardType: 'phone-pad',
+            autoCapitalize: 'none',
+            helperText: '* Provide at least email or phone number',
+          })}
+
+          {renderTextField('Date of Birth *', 'dateOfBirth', {
+            placeholder: 'YYYY-MM-DD',
+            autoCapitalize: 'none',
+          })}
+
+          <View style={styles.fieldBlock}>
+            <Text style={styles.fieldLabel}>Gender *</Text>
+            <View style={styles.radioRow}>
+              {renderRadioOption('Male', 'Male', 'gender')}
+              {renderRadioOption('Female', 'Female', 'gender')}
             </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.email}
-                onChangeText={(value) => handleInputChange('email', value)}
-                placeholder="your.email@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.phone}
-                onChangeText={(value) => handleInputChange('phone', value)}
-                placeholder="(555) 123-4567"
-                keyboardType="phone-pad"
-              />
-              <Text style={styles.helperText}>* Provide at least email or phone number</Text>
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Date of Birth *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.dateOfBirth}
-                onChangeText={(value) => handleInputChange('dateOfBirth', value)}
-                placeholder="YYYY-MM-DD"
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Gender *</Text>
-              <View style={styles.radioGroup}>
-                <TouchableOpacity
-                  style={styles.radioOption}
-                  onPress={() => handleInputChange('gender', 'Male')}
-                >
-                  <View style={styles.radio}>
-                    {formData.gender === 'Male' && <View style={styles.radioSelected} />}
-                  </View>
-                  <Text style={styles.radioLabel}>Male</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.radioOption}
-                  onPress={() => handleInputChange('gender', 'Female')}
-                >
-                  <View style={styles.radio}>
-                    {formData.gender === 'Female' && <View style={styles.radioSelected} />}
-                  </View>
-                  <Text style={styles.radioLabel}>Female</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Zip Code *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.zipCode}
-                onChangeText={(value) => handleInputChange('zipCode', value)}
-                placeholder="12345"
-                keyboardType="numeric"
-                maxLength={5}
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Desired Monthly Premium</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.desiredPremium}
-                onChangeText={(value) => handleInputChange('desiredPremium', value)}
-                placeholder="$100"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Have you used any tobacco products within the last 12 months? *</Text>
-              <View style={styles.radioGroup}>
-                <TouchableOpacity
-                  style={styles.radioOption}
-                  onPress={() => handleInputChange('smokingStatus', 'Yes')}
-                >
-                  <View style={styles.radio}>
-                    {formData.smokingStatus === 'Yes' && <View style={styles.radioSelected} />}
-                  </View>
-                  <Text style={styles.radioLabel}>Yes</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.radioOption}
-                  onPress={() => handleInputChange('smokingStatus', 'No')}
-                >
-                  <View style={styles.radio}>
-                    {formData.smokingStatus === 'No' && <View style={styles.radioSelected} />}
-                  </View>
-                  <Text style={styles.radioLabel}>No</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {errorMessage ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>⚠ {errorMessage}</Text>
-              </View>
-            ) : null}
-
-            {submitStatus === 'success' ? (
-              <View style={styles.successBox}>
-                <Text style={styles.successText}>✓ Thank you! Your information has been submitted successfully.</Text>
-              </View>
-            ) : null}
-
-            {submitStatus === 'error' ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>⚠ There was an error submitting your information. Please try again.</Text>
-              </View>
-            ) : null}
-
-            <TouchableOpacity
-              style={[styles.submitButton, submitStatus === 'submitting' && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={submitStatus === 'submitting'}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.submitButtonText}>
-                {submitStatus === 'submitting' ? 'Submitting...' : 'Submit Quote Request'}
-              </Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
-    );
-  }
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.menuContainer}>
-        <View style={styles.menuHeader}>
-          <View style={styles.menuIconCircle}>
-            <Ionicons name="shield" size={40} color="#FFFFFF" />
-          </View>
-          <Text style={styles.menuTitle}>GuideMyCover</Text>
-          <Text style={styles.menuSubtitle}>Choose the type of insurance you'd like to explore</Text>
-        </View>
+          {renderTextField('Zip Code *', 'zipCode', {
+            placeholder: '12345',
+            keyboardType: 'number-pad',
+            autoCapitalize: 'none',
+            maxLength: 5,
+          })}
 
-        <View style={styles.menuCards}>
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleSelection('health')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.cardContent}>
-              <View style={[styles.cardIcon, { backgroundColor: '#DBEAFE' }]}>
-                <Ionicons name="cart" size={28} color="#2563EB" />
-              </View>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>Health Insurance</Text>
-                <Text style={styles.cardSubtitle}>Explore individual and family plan options</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-            </View>
-          </TouchableOpacity>
+          {renderTextField('Desired Monthly Premium', 'desiredPremium', {
+            placeholder: '$100',
+            keyboardType: 'default',
+            autoCapitalize: 'none',
+          })}
 
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleSelection('medicare')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.cardContent}>
-              <View style={[styles.cardIcon, { backgroundColor: '#FCE7F3' }]}>
-                <Ionicons name="heart" size={28} color="#DB2777" />
-              </View>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>Medicare</Text>
-                <Text style={styles.cardSubtitle}>Browse Medicare coverage options</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleSelection('life')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.cardContent}>
-              <View style={[styles.cardIcon, { backgroundColor: '#D1FAE5' }]}>
-                <Ionicons name="shield" size={28} color="#059669" />
-              </View>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>Life Insurance</Text>
-                <Text style={styles.cardSubtitle}>Get a personalized quote</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleSelection('more')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.cardContent}>
-              <View style={[styles.cardIcon, { backgroundColor: '#FED7AA' }]}>
-                <Ionicons name="grid" size={28} color="#EA580C" />
-              </View>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>More Insurance Options</Text>
-                <Text style={styles.cardSubtitle}>Dental, Vision, and more</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Powered by{' '}
-            <Text
-              style={styles.footerLink}
-              onPress={() => {
-                const url = 'https://dojoga.io/';
-                if (Platform.OS === 'web') {
-                  if (typeof window !== 'undefined') {
-                    window.open(url, '_blank');
-                  }
-                } else {
-                  Linking.openURL(url);
-                }
-              }}
-            >
-              Dojoga.io
+          <View style={styles.fieldBlock}>
+            <Text style={styles.fieldLabel}>
+              Have you used any tobacco products within the last 12 months? *
             </Text>
-          </Text>
+            <View style={styles.radioRow}>
+              {renderRadioOption('Yes', 'Yes', 'smokingStatus')}
+              {renderRadioOption('No', 'No', 'smokingStatus')}
+            </View>
+          </View>
+
+          {errorMessage ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.bannerText}>Warning: {errorMessage}</Text>
+            </View>
+          ) : null}
+
+          {submitStatus === 'success' ? (
+            <View style={styles.successBanner}>
+              <Text style={styles.bannerText}>Submitted successfully. Thank you.</Text>
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            style={[styles.submitButton, submitStatus === 'submitting' && styles.submitButtonDisabled]}
+            activeOpacity={0.9}
+            onPress={() => void handleSubmit()}
+            disabled={submitStatus === 'submitting'}
+          >
+            <Text style={styles.submitButtonText}>
+              {submitStatus === 'submitting' ? 'Submitting...' : 'Submit Quote Request'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </ScrollView>
+    </View>
+  );
+
+  const renderMenuView = () => (
+    <View style={styles.pageWrap}>
+      <View style={styles.menuHeader}>
+        <View style={styles.brandHalo} />
+        <View style={styles.brandBadge}>
+          <Ionicons name="umbrella" size={52} color="#FFFFFF" />
+        </View>
+        <Text style={styles.brandTitle}>GuideMyCover</Text>
+        <Text style={styles.brandSubtitle}>Your premium insurance companion</Text>
+      </View>
+
+      <View style={styles.stack}>
+        {renderMenuCard(
+          'Health Insurance',
+          'Explore individual and family plan options',
+          'cart',
+          'rgba(37, 99, 235, 0.24)',
+          '#60A5FA',
+          '#60A5FA',
+          () => handleSelection('health')
+        )}
+        {renderMenuCard(
+          'Medicare',
+          'Browse Medicare coverage options',
+          'heart',
+          'rgba(219, 39, 119, 0.24)',
+          '#F472B6',
+          '#F472B6',
+          () => handleSelection('medicare')
+        )}
+        {renderMenuCard(
+          'Life Insurance',
+          'Get a personalized quote',
+          'shield-checkmark',
+          'rgba(16, 185, 129, 0.24)',
+          '#34D399',
+          '#34D399',
+          () => handleSelection('life')
+        )}
+        {renderMenuCard(
+          'More Insurance Options',
+          'Dental, Vision, and more',
+          'grid',
+          'rgba(249, 115, 22, 0.24)',
+          '#FB923C',
+          '#FB923C',
+          () => handleSelection('more')
+        )}
+        {renderMenuCard(
+          'Contact a Broker',
+          'Speak with an insurance expert',
+          'call',
+          'rgba(139, 92, 246, 0.24)',
+          '#A78BFA',
+          '#A78BFA',
+          () => handleSelection('contact')
+        )}
+      </View>
+
+      <Text style={styles.footerText}>
+        Powered by{' '}
+        <Text style={styles.footerLink} onPress={() => void openUrl('https://dojoga.io/')}>
+          Dojoga.io
+        </Text>
+      </Text>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      {renderBackground()}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {view === 'contact' ? renderContactView() : null}
+          {view === 'life' ? renderLifeView() : null}
+          {view === 'menu' ? renderMenuView() : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#050816',
+  },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#050816',
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.18,
+    backgroundColor: 'transparent',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  orb: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 999,
+    opacity: 0.28,
+  },
+  orbPurple: {
+    top: 72,
+    left: -30,
+    backgroundColor: '#7C3AED',
+  },
+  orbEmerald: {
+    top: 180,
+    right: -40,
+    backgroundColor: '#10B981',
+  },
+  orbPink: {
+    bottom: 24,
+    left: 32,
+    backgroundColor: '#EC4899',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 120,
   },
-  headerContainer: {
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+  pageWrap: {
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   backButton: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    marginBottom: 20,
   },
-  backButtonText: {
+  backText: {
+    color: '#6EE7B7',
     fontSize: 14,
-    color: Colors.barBackground,
-    fontWeight: '500',
-    marginLeft: 4,
+    fontWeight: '600',
   },
-  menuContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    paddingBottom: 20,
+  centeredHeader: {
     alignItems: 'center',
+    marginBottom: 24,
   },
-  menuHeader: {
-    alignItems: 'center',
-    marginBottom: 32,
+  heroHalo: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 999,
+    backgroundColor: 'rgba(16, 185, 129, 0.32)',
+    top: -12,
   },
-  menuIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#10B981',
+  heroHaloSmall: {
+    position: 'absolute',
+    width: 88,
+    height: 88,
+    borderRadius: 999,
+    backgroundColor: 'rgba(16, 185, 129, 0.28)',
+    top: 0,
+  },
+  heroIconShell: {
+    width: 82,
+    height: 82,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    marginBottom: 18,
+    shadowColor: '#10B981',
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
   },
-  menuTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: Colors.textColor,
-    marginBottom: 8,
+  heroIconContact: {
+    backgroundColor: '#0F766E',
   },
-  menuSubtitle: {
+  heroIconShield: {
+    backgroundColor: '#059669',
+  },
+  sectionTitle: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  sectionSubtitle: {
     fontSize: 16,
-    color: Colors.textColor,
-    opacity: 0.7,
+    lineHeight: 22,
+    color: '#CBD5E1',
     textAlign: 'center',
   },
-  menuCards: {
-    width: '100%',
-    gap: 16,
-    marginBottom: 32,
+  stack: {
+    gap: 14,
   },
-  menuCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  glassCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#000000',
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
   },
-  cardContent: {
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  cardIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+  cardIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
   },
-  cardText: {
+  cardTextBlock: {
     flex: 1,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.textColor,
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
     marginBottom: 4,
   },
   cardSubtitle: {
-    fontSize: 14,
-    color: Colors.textColor,
-    opacity: 0.6,
+    color: '#CBD5E1',
+    fontSize: 13,
+    lineHeight: 18,
   },
-  contactContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  contactHeader: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  contactIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  contactTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.textColor,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  contactSubtitle: {
-    fontSize: 16,
-    color: Colors.textColor,
-    opacity: 0.7,
-    textAlign: 'center',
-  },
-  contactCards: {
-    gap: 16,
-  },
-  contactCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  formShell: {
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  formContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
+    shadowColor: '#000000',
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
   },
   formHeader: {
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  formIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 20,
   },
   formTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.textColor,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  formSubtitle: {
+    color: '#CBD5E1',
+    fontSize: 14,
     marginBottom: 8,
     textAlign: 'center',
   },
-  formSubtitle: {
-    fontSize: 14,
-    color: Colors.textColor,
-    opacity: 0.7,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  requiredNote: {
+  requiredText: {
+    color: '#6EE7B7',
     fontSize: 12,
-    color: Colors.textColor,
-    opacity: 0.5,
-    marginTop: 8,
+    fontWeight: '700',
   },
   formFields: {
-    gap: 16,
+    gap: 14,
   },
-  field: {
-    marginBottom: 16,
-  },
-  row: {
+  formRow: {
     flexDirection: 'row',
     gap: 12,
   },
-  halfWidth: {
+  halfField: {
     flex: 1,
   },
-  label: {
+  fieldBlock: {
+    gap: 8,
+  },
+  fieldLabel: {
+    color: '#E2E8F0',
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.textColor,
-    marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Colors.textColor,
+    paddingVertical: 14,
+    color: '#FFFFFF',
+    fontSize: 15,
   },
   helperText: {
+    color: '#94A3B8',
     fontSize: 12,
-    color: Colors.textColor,
-    opacity: 0.5,
-    marginTop: 4,
   },
-  radioGroup: {
+  radioRow: {
     flexDirection: 'row',
-    gap: 24,
-    marginTop: 8,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  radioOption: {
+  radioPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    minWidth: 112,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  radio: {
+  radioPillSelected: {
+    borderColor: 'rgba(52, 211, 153, 0.55)',
+    backgroundColor: 'rgba(16, 185, 129, 0.16)',
+  },
+  radioOuter: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#10B981',
+    borderColor: '#94A3B8',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
   },
-  radioSelected: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#10B981',
+  radioOuterSelected: {
+    borderColor: '#34D399',
   },
-  radioLabel: {
-    fontSize: 16,
-    color: Colors.textColor,
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#34D399',
   },
-  errorBox: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-  },
-  errorText: {
+  radioText: {
+    color: '#E2E8F0',
     fontSize: 14,
-    color: '#991B1B',
+    fontWeight: '600',
   },
-  successBox: {
-    backgroundColor: '#F0FDF4',
+  errorBanner: {
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
+    borderColor: 'rgba(248, 113, 113, 0.45)',
+    backgroundColor: 'rgba(127, 29, 29, 0.35)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  successText: {
+  successBanner: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.45)',
+    backgroundColor: 'rgba(6, 78, 59, 0.35)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  bannerText: {
+    color: '#F8FAFC',
     fontSize: 14,
-    color: '#166534',
+    lineHeight: 20,
   },
   submitButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 8,
-    paddingVertical: 14,
+    borderRadius: 18,
+    backgroundColor: '#0D9488',
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 4,
+    shadowColor: '#10B981',
+    shadowOpacity: 0.32,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
   },
   submitButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+    opacity: 0.65,
   },
   submitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
   },
-  footer: {
+  menuHeader: {
     alignItems: 'center',
-    marginTop: 32,
+    marginBottom: 28,
+    marginTop: 8,
+  },
+  brandHalo: {
+    position: 'absolute',
+    width: 132,
+    height: 132,
+    borderRadius: 999,
+    backgroundColor: 'rgba(20, 184, 166, 0.25)',
+    top: -6,
+  },
+  brandBadge: {
+    width: 102,
+    height: 102,
+    borderRadius: 34,
+    backgroundColor: '#0F766E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 22,
+    shadowColor: '#14B8A6',
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
+  },
+  brandTitle: {
+    fontSize: 38,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  brandSubtitle: {
+    fontSize: 17,
+    color: '#CBD5E1',
+    textAlign: 'center',
   },
   footerText: {
-    fontSize: 14,
-    color: Colors.textColor,
-    opacity: 0.5,
+    color: '#94A3B8',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 28,
   },
   footerLink: {
-    color: '#2563EB',
-    fontWeight: '500',
+    color: '#6EE7B7',
+    fontWeight: '700',
   },
 });

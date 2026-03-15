@@ -1,9 +1,14 @@
-# Release Notes v1
+# Release Notes v1.5.0
 
 ## Release Artifacts
 
 - APK: `android/app/build/outputs/apk/release/app-v1-release.apk`
-- AAB: `android/app/build/outputs/bundle/release/app-v1-release.aab`
+- AAB: `android/app/build/outputs/bundle/release/app-release.aab`
+
+## Version Information
+
+- versionCode: `2`
+- versionName: `1.5.0`
 
 ## Included Updates
 
@@ -16,4 +21,5 @@
 ## Notes
 
 - These artifact files are tracked through Git LFS.
-- Current artifact naming uses the `v1-release` pattern.
+- The latest Play Store upload bundle is the rebuilt `app-release.aab`.
+- The older `app-v1-release.aab` is still present locally as a previous build artifact.
